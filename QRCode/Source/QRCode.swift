@@ -100,7 +100,7 @@ open class QRCode: NSObject, AVCaptureMetadataOutputObjectsDelegate {
         colorFilter.setValue(backColor, forKey: "inputColor1")
         
         let transform = CGAffineTransform(scaleX: 10, y: 10)
-        let transformedImage = qrFilter.outputImage!.applying(transform)
+        let transformedImage = qrFilter.outputImage!.transformed(by: transform)
         
         let image = UIImage(ciImage: transformedImage)
         
@@ -174,17 +174,18 @@ open class QRCode: NSObject, AVCaptureMetadataOutputObjectsDelegate {
     }
     
     func setupSession() {
-        if session.isRunning {
+        guard !session.isRunning else {
             print("the capture session is running")
             return
         }
         
-        if !session.canAddInput(videoInput) {
+        guard let videoInput = videoInput,
+            session.canAddInput(videoInput) else {
             print("can not add input device")
             return
         }
         
-        if !session.canAddOutput(dataOutput) {
+        guard session.canAddOutput(dataOutput) else {
             print("can not add output device")
             return
         }
@@ -196,13 +197,14 @@ open class QRCode: NSObject, AVCaptureMetadataOutputObjectsDelegate {
         dataOutput.setMetadataObjectsDelegate(self, queue: DispatchQueue.main)
     }
     
-    open func captureOutput(_ captureOutput: AVCaptureOutput!, didOutputMetadataObjects metadataObjects: [Any]!, from connection: AVCaptureConnection!) {
+    open func metadataOutput(_ captureOutput: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
         
         clearDrawLayer()
         
         for dataObject in metadataObjects {
             
             if let codeObject = dataObject as? AVMetadataMachineReadableCodeObject,
+                let stringValue = codeObject.stringValue,
                 let obj = previewLayer.transformedMetadataObject(for: codeObject) as? AVMetadataMachineReadableCodeObject {
 
                 if scanFrame.contains(obj.bounds) {
@@ -210,7 +212,7 @@ open class QRCode: NSObject, AVCaptureMetadataOutputObjectsDelegate {
                     if currentDetectedCount > maxDetectedCount {
                         session.stopRunning()
                         
-                        completedCallBack!(codeObject.stringValue)
+                        completedCallBack?(stringValue)
                         
                         if autoRemoveSubLayers {
                             removeAllLayers()
@@ -274,8 +276,8 @@ open class QRCode: NSObject, AVCaptureMetadataOutputObjectsDelegate {
     /// previewLayer
     lazy var previewLayer: AVCaptureVideoPreviewLayer = {
         let layer = AVCaptureVideoPreviewLayer(session: self.session)
-        layer?.videoGravity = AVLayerVideoGravityResizeAspectFill
-        return layer!
+        layer.videoGravity = AVLayerVideoGravity(rawValue: convertFromAVLayerVideoGravity(AVLayerVideoGravity.resizeAspectFill))
+        return layer
         }()
     
     /// drawLayer
@@ -285,7 +287,7 @@ open class QRCode: NSObject, AVCaptureMetadataOutputObjectsDelegate {
     /// input
     lazy var videoInput: AVCaptureDeviceInput? = {
         
-        if let device = AVCaptureDevice.defaultDevice(withMediaType: AVMediaTypeVideo) {
+        if let device = AVCaptureDevice.default(for: AVMediaType(rawValue: convertFromAVMediaType(AVMediaType.video))) {
             return try? AVCaptureDeviceInput(device: device)
         }
         return nil
@@ -293,4 +295,14 @@ open class QRCode: NSObject, AVCaptureMetadataOutputObjectsDelegate {
     
     /// output
     lazy var dataOutput = AVCaptureMetadataOutput()
+}
+
+// Helper function inserted by Swift 4.2 migrator.
+fileprivate func convertFromAVLayerVideoGravity(_ input: AVLayerVideoGravity) -> String {
+	return input.rawValue
+}
+
+// Helper function inserted by Swift 4.2 migrator.
+fileprivate func convertFromAVMediaType(_ input: AVMediaType) -> String {
+	return input.rawValue
 }
