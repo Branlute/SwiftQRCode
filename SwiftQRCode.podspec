@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "SwiftQRCode"
-  s.version      = "3.0.2"
+  s.version      = "3.0.3"
   s.summary      = "Simple QRCode detector and generator in Swift"
   s.homepage     = "https://github.com/liufan321/QRCode"
   s.license      = "MIT"
